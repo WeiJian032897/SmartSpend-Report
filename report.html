@@ -1,273 +1,505 @@
-<!DOCTYPE html>
-  <html lang="en">
-  <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">       
-      <title>SmartSpend Financial Report</title>
-      <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-      <style>
-          * {
-              margin: 0;
-              padding: 0;
-              box-sizing: border-box;
-          }
-
-          body {
-              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;        
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);       
-              min-height: 100vh;
-              padding: 20px;
-          }
-
-          .container {
-              max-width: 1200px;
-              margin: 0 auto;
-              background: white;
-              border-radius: 20px;
-              box-shadow: 0 20px 60px rgba(0,0,0,0.1);
-              overflow: hidden;
-          }
-
-          .header {
-              background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);       
-              color: white;
-              padding: 30px;
-              text-align: center;
-          }
-
-          .header h1 {
-              font-size: 2.5em;
-              margin-bottom: 10px;
-          }
-
-          .header p {
-              font-size: 1.2em;
-              opacity: 0.9;
-          }
-
-          .content {
-              padding: 40px;
-          }
-
-          .summary-cards {
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-              gap: 20px;
-              margin-bottom: 40px;
-          }
-
-          .card {
-              background: #f8f9fa;
-              border-radius: 15px;
-              padding: 25px;
-              text-align: center;
-              border: 2px solid #e9ecef;
-              transition: transform 0.3s ease;
-          }
-
-          .card:hover {
-              transform: translateY(-5px);
-          }
-
-          .card h3 {
-              color: #495057;
-              margin-bottom: 10px;
-              font-size: 1.1em;
-          }
-
-          .card .amount {
-              font-size: 2em;
-              font-weight: bold;
-              color: #2c3e50;
-          }
-
-          .income .amount { color: #27ae60; }
-          .expense .amount { color: #e74c3c; }
-          .balance .amount { color: #3498db; }
-
-          .charts {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 40px;
-              margin-top: 40px;
-          }
-
-          .chart-container {
-              background: #f8f9fa;
-              border-radius: 15px;
-              padding: 30px;
-          }
-
-          .chart-title {
-              text-align: center;
-              margin-bottom: 20px;
-              font-size: 1.4em;
-              color: #2c3e50;
-          }
-
-          @media (max-width: 768px) {
-              .charts {
-                  grid-template-columns: 1fr;
-              }
-              .header h1 {
-                  font-size: 2em;
-              }
-              .content {
-                  padding: 20px;
-              }
-          }
-
-          .error {
-              text-align: center;
-              padding: 50px;
-              color: #e74c3c;
-              font-size: 1.2em;
-          }
-      </style>
-  </head>
-  <body>
-      <div class="container">
-          <div class="header">
-              <h1>📊 SmartSpend Report</h1>
-              <p id="reportPeriod">Financial Report</p>
-          </div>
-
-          <div class="content">
-              <div id="reportContent">
-                  <div class="error">
-                      <h2>Loading Report...</h2>
-                      <p>Please wait while we load your financial data.</p>        
-                  </div>
-              </div>
-          </div>
-      </div>
-
-      <script>
-          function getUrlParameter(name) {
-              name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
-              var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
-              var results = regex.exec(location.search);
-              return results === null ? '' :
-  decodeURIComponent(results[1].replace(/\+/g, ' '));
-          }
-
-          function formatCurrency(amount, currency = 'RM') {
-              return `${currency} ${amount.toFixed(2)}`;
-          }
-
-          function createPieChart(canvasId, data, title) {
-              const ctx = document.getElementById(canvasId).getContext('2d');      
-              const labels = Object.keys(data);
-              const values = Object.values(data);
-
-              new Chart(ctx, {
-                  type: 'pie',
-                  data: {
-                      labels: labels,
-                      datasets: [{
-                          data: values,
-                          backgroundColor: [
-                              '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
-                              '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF'
-                          ]
-                      }]
-                  },
-                  options: {
-                      responsive: true,
-                      plugins: {
-                          legend: {
-                              position: 'bottom'
-                          }
-                      }
-                  }
-              });
-          }
-
-          function displayReport(reportData) {
-              const currency = reportData.currency || 'RM';
-
-              document.getElementById('reportPeriod').textContent =
-                  `${reportData.type.charAt(0).toUpperCase() +
-  reportData.type.slice(1)} Report - ${reportData.period}`;
-
-              const content = `
-                  <div class="summary-cards">
-                      <div class="card income">
-                          <h3>Total Income</h3>
-                          <div
-  class="amount">${formatCurrency(reportData.totalIncome, currency)}</div>
-                      </div>
-                      <div class="card expense">
-                          <h3>Total Expenses</h3>
-                          <div
-  class="amount">${formatCurrency(reportData.totalExpenses, currency)}</div>       
-                      </div>
-                      <div class="card balance">
-                          <h3>Net Balance</h3>
-                          <div
-  class="amount">${formatCurrency(reportData.netBalance, currency)}</div>
-                      </div>
-                      <div class="card">
-                          <h3>Transactions</h3>
-                          <div
-  class="amount">${reportData.transactionCount}</div>
-                      </div>
-                  </div>
-
-                  <div class="charts">
-                      <div class="chart-container">
-                          <h3 class="chart-title">Expenses by Category</h3>        
-                          <canvas id="categoryChart"></canvas>
-                      </div>
-                      <div class="chart-container">
-                          <h3 class="chart-title">Income vs Expenses</h3>
-                          <canvas id="summaryChart"></canvas>
-                      </div>
-                  </div>
-              `;
-
-              document.getElementById('reportContent').innerHTML = content;        
-
-              // Create charts
-              setTimeout(() => {
-                  if (Object.keys(reportData.categoryBreakdown).length > 0) {      
-                      createPieChart('categoryChart',
-  reportData.categoryBreakdown, 'Category Breakdown');
-                  }
-
-                  createPieChart('summaryChart', {
-                      'Income': reportData.totalIncome,
-                      'Expenses': reportData.totalExpenses
-                  }, 'Income vs Expenses');
-              }, 100);
-          }
-
-          // Main execution
-          try {
-              const encodedData = getUrlParameter('data');
-              const userId = getUrlParameter('user');
-
-              if (!encodedData) {
-                  throw new Error('No report data found in URL');
-              }
-
-              // Decode the data
-              const decodedData = atob(encodedData.replace(/-/g,
-  '+').replace(/_/g, '/'));
-              const reportData = JSON.parse(decodedData);
-
-              displayReport(reportData);
-
-          } catch (error) {
-              document.getElementById('reportContent').innerHTML = `
-                  <div class="error">
-                      <h2>❌ Error Loading Report</h2>
-                      <p>Unable to load the financial report data.</p>
-                      <p><small>Error: ${error.message}</small></p>
-                  </div>
-              `;
-          }
-      </script>
-  </body>
-  </html>
-
++  <!DOCTYPE html>
+         2 +  <html lang="en">
+         3 +  <head>
+         4 +      <meta charset="UTF-8">
+         5 +      <meta name="viewport" content="width=device-width, 
+           +  initial-scale=1.0">       
+         6 +      <title>SmartSpend Financial Report</title>
+         7 +      <script 
+           + src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+         8 +      <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/       
+           + 2.5.1/jspdf.umd.min.js"></script>
+         9 +      <style>
+        10 +          * {
+        11 +              margin: 0;
+        12 +              padding: 0;
+        13 +              box-sizing: border-box;
+        14 +          }
+        15 +  
+        16 +          body {
+        17 +              font-family: 'Segoe UI', Tahoma, Geneva, Verdana,        
+           + sans-serif;        
+        18 +              background: linear-gradient(135deg, #667eea 0%, 
+           + #764ba2 100%);       
+        19 +              min-height: 100vh;
+        20 +              padding: 20px;
+        21 +          }
+        22 +  
+        23 +          .container {
+        24 +              max-width: 1200px;
+        25 +              margin: 0 auto;
+        26 +              background: white;
+        27 +              border-radius: 20px;
+        28 +              box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+        29 +              overflow: hidden;
+        30 +          }
+        31 +  
+        32 +          .header {
+        33 +              background: linear-gradient(135deg, #4CAF50 0%, 
+           + #45a049 100%);       
+        34 +              color: white;
+        35 +              padding: 30px;
+        36 +              text-align: center;
+        37 +          }
+        38 +  
+        39 +          .header h1 {
+        40 +              font-size: 2.5em;
+        41 +              margin-bottom: 10px;
+        42 +          }
+        43 +  
+        44 +          .header p {
+        45 +              font-size: 1.2em;
+        46 +              opacity: 0.9;
+        47 +          }
+        48 +  
+        49 +          .content {
+        50 +              padding: 40px;
+        51 +          }
+        52 +  
+        53 +          .summary-cards {
+        54 +              display: grid;
+        55 +              grid-template-columns: repeat(auto-fit, 
+           + minmax(250px, 1fr));
+        56 +              gap: 20px;
+        57 +              margin-bottom: 40px;
+        58 +          }
+        59 +  
+        60 +          .card {
+        61 +              background: #f8f9fa;
+        62 +              border-radius: 15px;
+        63 +              padding: 25px;
+        64 +              text-align: center;
+        65 +              border: 2px solid #e9ecef;
+        66 +              transition: transform 0.3s ease;
+        67 +          }
+        68 +  
+        69 +          .card:hover {
+        70 +              transform: translateY(-5px);
+        71 +          }
+        72 +  
+        73 +          .card h3 {
+        74 +              color: #495057;
+        75 +              margin-bottom: 10px;
+        76 +              font-size: 1.1em;
+        77 +          }
+        78 +  
+        79 +          .card .amount {
+        80 +              font-size: 2em;
+        81 +              font-weight: bold;
+        82 +              color: #2c3e50;
+        83 +          }
+        84 +  
+        85 +          .income .amount { color: #27ae60; }
+        86 +          .expense .amount { color: #e74c3c; }
+        87 +          .balance .amount { color: #3498db; }
+        88 +  
+        89 +          .charts {
+        90 +              display: grid;
+        91 +              grid-template-columns: 1fr 1fr;
+        92 +              gap: 40px;
+        93 +              margin-top: 40px;
+        94 +          }
+        95 +  
+        96 +          .chart-container {
+        97 +              background: #f8f9fa;
+        98 +              border-radius: 15px;
+        99 +              padding: 30px;
+       100 +          }
+       101 +  
+       102 +          .chart-title {
+       103 +              text-align: center;
+       104 +              margin-bottom: 20px;
+       105 +              font-size: 1.4em;
+       106 +              color: #2c3e50;
+       107 +          }
+       108 +  
+       109 +          .download-section {
+       110 +              background: #f8f9fa;
+       111 +              padding: 30px;
+       112 +              text-align: center;
+       113 +              border-top: 2px solid #e9ecef;
+       114 +              margin-top: 40px;
+       115 +          }
+       116 +  
+       117 +          .download-btn {
+       118 +              background: linear-gradient(135deg, #4CAF50 0%, 
+           + #45a049 100%);
+       119 +              color: white;
+       120 +              border: none;
+       121 +              padding: 15px 30px;
+       122 +              border-radius: 15px;
+       123 +              font-size: 1.2em;
+       124 +              font-weight: 600;
+       125 +              cursor: pointer;
+       126 +              transition: all 0.3s ease;
+       127 +              box-shadow: 0 8px 25px rgba(76, 175, 80, 0.3);
+       128 +          }
+       129 +  
+       130 +          .download-btn:hover {
+       131 +              transform: translateY(-3px);
+       132 +              box-shadow: 0 12px 35px rgba(76, 175, 80, 0.4);
+       133 +          }
+       134 +  
+       135 +          .download-btn:active {
+       136 +              transform: translateY(0);
+       137 +          }
+       138 +  
+       139 +          .download-btn:disabled {
+       140 +              background: #6c757d;
+       141 +              cursor: not-allowed;
+       142 +              transform: none;
+       143 +              box-shadow: none;
+       144 +          }
+       145 +  
+       146 +          @media (max-width: 768px) {
+       147 +              .charts {
+       148 +                  grid-template-columns: 1fr;
+       149 +              }
+       150 +              .header h1 {
+       151 +                  font-size: 2em;
+       152 +              }
+       153 +              .content {
+       154 +                  padding: 20px;
+       155 +              }
+       156 +          }
+       157 +  
+       158 +          .error {
+       159 +              text-align: center;
+       160 +              padding: 50px;
+       161 +              color: #e74c3c;
+       162 +              font-size: 1.2em;
+       163 +          }
+       164 +      </style>
+       165 +  </head>
+       166 +  <body>
+       167 +      <div class="container">
+       168 +          <div class="header">
+       169 +              <h1>📊 SmartSpend Report</h1>
+       170 +              <p id="reportPeriod">Financial Report</p>
+       171 +          </div>
+       172 +  
+       173 +          <div class="content">
+       174 +              <div id="reportContent">
+       175 +                  <div class="error">
+       176 +                      <h2>Loading Report...</h2>
+       177 +                      <p>Please wait while we load your 
+           + financial data.</p>        
+       178 +                  </div>
+       179 +              </div>
+       180 +          </div>
+       181 +  
+       182 +          <div class="download-section">
+       183 +              <button class="download-btn" 
+           + onclick="downloadPDF()" id="downloadBtn">
+       184 +                  📄 Download Report (PDF)
+       185 +              </button>
+       186 +          </div>
+       187 +      </div>
+       188 +  
+       189 +      <script>
+       190 +          function getUrlParameter(name) {
+       191 +              name = name.replace(/[\[]/, '\\[').replace(/[\]]/,       
+           +  '\\]');
+       192 +              var regex = new RegExp('[\\?&]' + name + 
+           + '=([^&#]*)');
+       193 +              var results = regex.exec(location.search);
+       194 +              return results === null ? '' : 
+           + decodeURIComponent(results[1].replace(/\+/g, ' '));
+       195 +          }
+       196 +  
+       197 +          function formatCurrency(amount, currency = 'RM') {
+       198 +              return `${currency} ${amount.toFixed(2)}`;
+       199 +          }
+       200 +  
+       201 +          function createPieChart(canvasId, data, title) {
+       202 +              const ctx = 
+           + document.getElementById(canvasId).getContext('2d');      
+       203 +              const labels = Object.keys(data);
+       204 +              const values = Object.values(data);
+       205 +  
+       206 +              new Chart(ctx, {
+       207 +                  type: 'pie',
+       208 +                  data: {
+       209 +                      labels: labels,
+       210 +                      datasets: [{
+       211 +                          data: values,
+       212 +                          backgroundColor: [
+       213 +                              '#FF6384', '#36A2EB', '#FFCE56',         
+           + '#4BC0C0',
+       214 +                              '#9966FF', '#FF9F40', '#FF6384',         
+           + '#C9CBCF'
+       215 +                          ]
+       216 +                      }]
+       217 +                  },
+       218 +                  options: {
+       219 +                      responsive: true,
+       220 +                      plugins: {
+       221 +                          legend: {
+       222 +                              position: 'bottom'
+       223 +                          }
+       224 +                      }
+       225 +                  }
+       226 +              });
+       227 +          }
+       228 +  
+       229 +          function displayReport(reportData) {
+       230 +              const currency = reportData.currency || 'RM';
+       231 +  
+       232 +
+           + document.getElementById('reportPeriod').textContent =
+       233 +                  `${reportData.type.charAt(0).toUpperCase() +         
+           + reportData.type.slice(1)} Report - ${reportData.period}`;
+       234 +  
+       235 +              const content = `
+       236 +                  <div class="summary-cards">
+       237 +                      <div class="card income">
+       238 +                          <h3>Total Income</h3>
+       239 +                          <div 
+           + class="amount">${formatCurrency(reportData.totalIncome, 
+           + currency)}</div>
+       240 +                      </div>
+       241 +                      <div class="card expense">
+       242 +                          <h3>Total Expenses</h3>
+       243 +                          <div 
+           + class="amount">${formatCurrency(reportData.totalExpenses, 
+           + currency)}</div>       
+       244 +                      </div>
+       245 +                      <div class="card balance">
+       246 +                          <h3>Net Balance</h3>
+       247 +                          <div 
+           + class="amount">${formatCurrency(reportData.netBalance, 
+           + currency)}</div>
+       248 +                      </div>
+       249 +                      <div class="card">
+       250 +                          <h3>Transactions</h3>
+       251 +                          <div 
+           + class="amount">${reportData.transactionCount}</div>
+       252 +                      </div>
+       253 +                  </div>
+       254 +  
+       255 +                  <div class="charts">
+       256 +                      <div class="chart-container">
+       257 +                          <h3 class="chart-title">Expenses by 
+           + Category</h3>        
+       258 +                          <canvas id="categoryChart"></canvas>
+       259 +                      </div>
+       260 +                      <div class="chart-container">
+       261 +                          <h3 class="chart-title">Income vs 
+           + Expenses</h3>
+       262 +                          <canvas id="summaryChart"></canvas>
+       263 +                      </div>
+       264 +                  </div>
+       265 +              `;
+       266 +  
+       267 +              document.getElementById('reportContent').innerHTML       
+           +  = content;        
+       268 +  
+       269 +              // Create charts
+       270 +              setTimeout(() => {
+       271 +                  if 
+           + (Object.keys(reportData.categoryBreakdown).length > 0) {              
+       272 +                      createPieChart('categoryChart', 
+           + reportData.categoryBreakdown, 'Category Breakdown');
+       273 +                  }
+       274 +  
+       275 +                  createPieChart('summaryChart', {
+       276 +                      'Income': reportData.totalIncome,
+       277 +                      'Expenses': reportData.totalExpenses
+       278 +                  }, 'Income vs Expenses');
+       279 +              }, 100);
+       280 +          }
+       281 +  
+       282 +          function downloadPDF() {
+       283 +              const downloadBtn = 
+           + document.getElementById('downloadBtn');
+       284 +              downloadBtn.disabled = true;
+       285 +              downloadBtn.textContent = '⏳ Generating PDF...';        
+       286 +
+       287 +              try {
+       288 +                  const { jsPDF } = window.jspdf;
+       289 +                  const doc = new jsPDF();
+       290 +
+       291 +                  // Get report data
+       292 +                  const encodedData = getUrlParameter('data');
+       293 +                  const decodedData = 
+           + atob(encodedData.replace(/-/g, '+').replace(/_/g, '/'));
+       294 +                  const reportData = JSON.parse(decodedData);
+       295 +                  const currency = reportData.currency || 'RM';        
+       296 +
+       297 +                  // Set up colors
+       298 +                  const primaryGreen = [76, 175, 80];
+       299 +                  const darkGreen = [69, 160, 73];
+       300 +                  const textColor = [44, 62, 80];
+       301 +                  const grayColor = [102, 102, 102];
+       302 +
+       303 +                  // Header with gradient effect
+       304 +                  doc.setFillColor(primaryGreen[0], 
+           + primaryGreen[1], primaryGreen[2]);
+       305 +                  doc.rect(0, 0, 210, 45, 'F');
+       306 +
+       307 +                  doc.setTextColor(255, 255, 255);
+       308 +                  doc.setFontSize(26);
+       309 +                  doc.setFont(undefined, 'bold');
+       310 +                  doc.text('📊 SmartSpend Report', 105, 25, { 
+           + align: 'center' });
+       311 +
+       312 +                  doc.setFontSize(16);
+       313 +                  doc.setFont(undefined, 'normal');
+       314 +                  const reportTitle = 
+           + `${reportData.type.charAt(0).toUpperCase() + 
+           + reportData.type.slice(1)} Report - ${reportData.period}`;
+       315 +                  doc.text(reportTitle, 105, 35, { align: 
+           + 'center' });
+       316 +
+       317 +                  // Summary section
+       318 +                  let y = 65;
+       319 +                  doc.setTextColor(textColor[0], textColor[1],         
+           + textColor[2]);
+       320 +                  doc.setFontSize(18);
+       321 +                  doc.setFont(undefined, 'bold');
+       322 +                  doc.text('📈 Financial Summary', 20, y);
+       323 +
+       324 +                  y += 20;
+       325 +                  doc.setFontSize(13);
+       326 +                  doc.setFont(undefined, 'normal');
+       327 +
+       328 +                  const summaryData = [
+       329 +                      ['💰 Total Income:', 
+           + formatCurrency(reportData.totalIncome, currency), '#27ae60'],
+       330 +                      ['💸 Total Expenses:', 
+           + formatCurrency(reportData.totalExpenses, currency), '#e74c3c'],       
+       331 +                      ['💼 Net Balance:', 
+           + formatCurrency(reportData.netBalance, currency), '#3498db'],
+       332 +                      ['📊 Total Transactions:', 
+           + reportData.transactionCount.toString(), '#2c3e50']
+       333 +                  ];
+       334 +
+       335 +                  summaryData.forEach(([label, value, color]) =>       
+           +  {
+       336 +                      doc.setTextColor(grayColor[0], 
+           + grayColor[1], grayColor[2]);
+       337 +                      doc.text(label, 20, y);
+       338 +
+       339 +                      // Set color based on value type
+       340 +                      if (label.includes('Income')) 
+           + doc.setTextColor(39, 174, 96);
+       341 +                      else if (label.includes('Expenses')) 
+           + doc.setTextColor(231, 76, 60);
+       342 +                      else if (label.includes('Balance')) {
+       343 +                          if (reportData.netBalance >= 0) 
+           + doc.setTextColor(39, 174, 96);
+       344 +                          else doc.setTextColor(231, 76, 60);
+       345 +                      }
+       346 +                      else doc.setTextColor(textColor[0], 
+           + textColor[1], textColor[2]);
+       347 +
+       348 +                      doc.setFont(undefined, 'bold');
+       349 +                      doc.text(value, 120, y);
+       350 +                      doc.setFont(undefined, 'normal');
+       351 +                      y += 12;
+       352 +                  });
+       353 +
+       354 +                  // Category breakdown section
+       355 +                  if 
+           + (Object.keys(reportData.categoryBreakdown).length > 0) {
+       356 +                      y += 20;
+       357 +                      doc.setTextColor(textColor[0], 
+           + textColor[1], textColor[2]);
+       358 +                      doc.setFontSize(18);
+       359 +                      doc.setFont(undefined, 'bold');
+       360 +                      doc.text('📋 Expense Breakdown by 
+           + Category', 20, y);
+       361 +
+       362 +                      y += 20;
+       363 +                      doc.setFontSize(12);
+       364 +                      doc.setFont(undefined, 'normal');
+       365 +
+       366 +                      const sortedCategories = 
+           + Object.entries(reportData.categoryBreakdown)
+       367 +                          .sort(([,a], [,b]) => b - a);
+       368 +
+       369 +                      sortedCategories.forEach(([category, 
+           + amount]) => {
+       370 +                          if (y > 270) {
+       371 +                              doc.addPage();
+       372 +                              y = 30;
+       373 +                          }
+       374 +
+       375 +                          doc.setTextColor(grayColor[0], 
+           + grayColor[1], grayColor[2]);
+       376 +                          doc.text(`• ${category}`, 25, y);
+       377 +                          doc.setTextColor(231, 76, 60);
+       378 +                          doc.setFont(undefined, 'bold');
+       379 +                          doc.text(formatCurrency(amount, 
+           + currency), 120, y);
+       380 +                          doc.setFont(undefined, 'normal');
+       381 +                          y += 10;
+       382 +                      });
+       383 +                  }
+       384 +
+       385 +                  // Add footer to all pages
+       386 +                  const pageCount = 
+           + doc.internal.getNumberOfPages();
+       387 +                  for (let i = 1; i <= pageCount; i++) {
+       388 +                      doc.setPage(i);
+       389 +                      doc.setFontSize(10);
+       390 +                      doc.setTextColor(grayColor[0], 
+           + grayColor[1], grayColor[2]);
+       391 +                      doc.text('Generated by SmartSpend App 📱',       
+           +  105, 285, { align: 'center' });
+       392 +                      doc.text(`Generated on ${new 
+           + Date().toLocaleString()}`, 105, 292, { align: 'center' });
+       393 +                  }
+       394 +
+       395 +                  // Generate filename
+       396 +                  const cleanPeriod = 
+           + reportData.period.replace(/\s+/g, '_').replace(/[,\-]/g, '');
+       397 +                  const filename = 
+           + `SmartSpend_${reportData.type}_Report_${cleanPeriod}.pdf`;
+       398 +
+       399 +                  // Save the PDF
+       400 +                  doc.save(filename);
+       401 +
+       402 +              } catch (error) {
+       403 +                  console.error('Error generating PDF:', error);       
+       404 +                  alert('❌ Error generating PDF. Please try 
+           + again.');
+       405 +              } finally {
+       406 +                  downloadBtn.disabled = false;
+       407 +                  downloadBtn.textContent = '📄 Download Report        
+           + (PDF)';
+       408 +              }
+       409 +          }
+       410 +  
+       411 +          // Main execution
+       412 +          try {
+       413 +              const encodedData = getUrlParameter('data');
+       414 +              const userId = getUrlParameter('user');
+       415 +  
+       416 +              if (!encodedData) {
+       417 +                  throw new Error('No report data found in 
+           + URL');
+       418 +              }
+       419 +  
+       420 +              // Decode the data
+       421 +              const decodedData = atob(encodedData.replace(/-/g,       
+           +  '+').replace(/_/g, '/'));
+       422 +              const reportData = JSON.parse(decodedData);
+       423 +  
+       424 +              displayReport(reportData);
+       425 +  
+       426 +          } catch (error) {
+       427 +              document.getElementById('reportContent').innerHTML       
+           +  = `
+       428 +                  <div class="error">
+       429 +                      <h2>❌ Error Loading Report</h2>
+       430 +                      <p>Unable to load the financial report 
+           + data.</p>
+       431 +                      <p><small>Error: 
+           + ${error.message}</small></p>
+       432 +                  </div>
+       433 +              `;
+       434 +          }
+       435 +      </script>
+       436 +  </body>
+       437    </html>

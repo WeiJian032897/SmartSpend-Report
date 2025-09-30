@@ -1,2 +1,2 @@
 # smartspend-report
-The place that users see their financial report.
+This repo is associated with SmartSpend-ExpenseTrackerApp.The place that users see their financial report.
